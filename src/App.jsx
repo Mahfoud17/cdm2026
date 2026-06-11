@@ -534,8 +534,9 @@ function PronosticView({ matches, currentUser, predsMap, resultsMap, onPredict, 
   const stages = ["all","Groupes","16èmes","Quarts","Demies","Finale"];
   const labels  = { all:"Tous", Groupes:"Groupes", "16èmes":"16èmes", Quarts:"Quarts", Demies:"Demies", Finale:"Finale" };
   const filtered = filter==="all" ? matches : matches.filter(m=>m.stage===filter);
-  const upcoming = filtered.filter(m=>!resultsMap[m.id]);
-  const done     = filtered.filter(m=> resultsMap[m.id]);
+  const sortByDate = (a, b) => new Date(a.date + "T" + a.time) - new Date(b.date + "T" + b.time);
+  const upcoming = filtered.filter(m=>!resultsMap[m.id]).sort(sortByDate);
+  const done     = filtered.filter(m=> resultsMap[m.id]).sort(sortByDate);
 
   return (
     <div>
