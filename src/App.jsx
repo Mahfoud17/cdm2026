@@ -9,9 +9,56 @@ import { createClient } from "@supabase/supabase-js";
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
 
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase      = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL   = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY   = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const FOOTBALL_KEY   = import.meta.env.VITE_FOOTBALL_API_KEY;
+const supabase       = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── CORRESPONDANCE noms API (anglais) → noms affichés ───────────────────────
+const TEAM_MAP = {
+  "Mexico":"Mexique","South Africa":"Afrique du Sud","Korea Republic":"Corée du Sud",
+  "Czechia":"Tchéquie","Canada":"Canada","Bosnia and Herzegovina":"Bosnie-Herz.",
+  "Qatar":"Qatar","Switzerland":"Suisse","Brazil":"Brésil","Morocco":"Maroc",
+  "Haiti":"Haïti","Scotland":"Écosse","USA":"États-Unis","Paraguay":"Paraguay",
+  "Australia":"Australie","Turkey":"Turquie","Germany":"Allemagne","Curaçao":"Curaçao",
+  "Ivory Coast":"Côte d'Ivoire","Ecuador":"Équateur","Netherlands":"Pays-Bas",
+  "Japan":"Japon","Senegal":"Sénégal","Venezuela":"Venezuela","Spain":"Espagne",
+  "Belgium":"Belgique","Iran":"Iran","New Zealand":"Nouvelle-Zélande",
+  "Portugal":"Portugal","Saudi Arabia":"Arabie Saoudite","Argentina":"Argentine",
+  "Nigeria":"Nigéria","France":"France","Norway":"Norvège","Uruguay":"Uruguay",
+  "Poland":"Pologne","Egypt":"Egypte","Serbia":"Serbie","Colombia":"Colombie",
+  "Uzbekistan":"Ouzbékistan","England":"Angleterre","Croatia":"Croatie",
+  "Ghana":"Ghana","Panama":"Panama",
+};
+
+// Synchronise automatiquement les résultats terminés depuis football-data.org
+async function syncResultsFromAPI(matchesData) {
+  if (!FOOTBALL_KEY) return;
+  try {
+    const res = await fetch(
+      "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED",
+      { headers: { "X-Auth-Token": FOOTBALL_KEY } }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const m of (data.matches || [])) {
+      const homeFR = TEAM_MAP[m.homeTeam?.name];
+      const awayFR = TEAM_MAP[m.awayTeam?.name];
+      if (!homeFR || !awayFR) continue;
+      const found = matchesData.find(x =>
+        x.home.includes(homeFR) && x.away.includes(awayFR)
+      );
+      if (!found) continue;
+      const hs = m.score?.fullTime?.home;
+      const as_ = m.score?.fullTime?.away;
+      if (hs === null || hs === undefined) continue;
+      await supabase.from("results").upsert(
+        { match_id: found.id, home_score: hs, away_score: as_ },
+        { onConflict: "match_id" }
+      );
+    }
+  } catch(e) { console.error("Erreur sync API:", e); }
+}
 
 // ─── MATCHES DATA ────────────────────────────────────────────────────────────
 
@@ -280,6 +327,15 @@ export default function App() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // ── Sync automatique résultats toutes les 5 minutes
+  useEffect(() => {
+    syncResultsFromAPI(MATCHES).then(fetchAll);
+    const interval = setInterval(() => {
+      syncResultsFromAPI(MATCHES).then(fetchAll);
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchAll]);
+
   // ── Realtime
   useEffect(() => {
     const ch = supabase.channel("global")
@@ -534,9 +590,8 @@ function PronosticView({ matches, currentUser, predsMap, resultsMap, onPredict, 
   const stages = ["all","Groupes","16èmes","Quarts","Demies","Finale"];
   const labels  = { all:"Tous", Groupes:"Groupes", "16èmes":"16èmes", Quarts:"Quarts", Demies:"Demies", Finale:"Finale" };
   const filtered = filter==="all" ? matches : matches.filter(m=>m.stage===filter);
-  const sortByDate = (a, b) => new Date(a.date + "T" + a.time) - new Date(b.date + "T" + b.time);
-  const upcoming = filtered.filter(m=>!resultsMap[m.id]).sort(sortByDate);
-  const done     = filtered.filter(m=> resultsMap[m.id]).sort(sortByDate);
+  const upcoming = filtered.filter(m=>!resultsMap[m.id]);
+  const done     = filtered.filter(m=> resultsMap[m.id]);
 
   return (
     <div>
