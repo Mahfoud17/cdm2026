@@ -62,58 +62,43 @@ const KNOWN_RESULTS = [
   { match_id: 55, home_score: 3, away_score: 1 }, // Argentine 3-1 Algérie
 ];
 
-// Synchronise automatiquement les résultats terminés depuis football-data.org
-// Si l'API échoue ou ne renvoie rien, on utilise KNOWN_RESULTS comme fallback.
+// Synchronise automatiquement les résultats terminés.
+// Utilise le proxy Vercel (/api/sync-results) pour éviter CORS.
+// Fallback sur KNOWN_RESULTS si le proxy échoue.
 async function syncResultsFromAPI(matchesData) {
   let apiSynced = 0;
-  if (FOOTBALL_KEY) {
-    try {
-      const res = await fetch(
-        "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED&season=2026",
-        { headers: { "X-Auth-Token": FOOTBALL_KEY } }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const apiMatches = data.matches || [];
-        for (const m of apiMatches) {
-          const homeFR = TEAM_MAP[m.homeTeam?.name];
-          const awayFR = TEAM_MAP[m.awayTeam?.name];
-          if (!homeFR || !awayFR) {
-            console.warn("⚠️ Équipe non mappée:", m.homeTeam?.name, "vs", m.awayTeam?.name);
-            continue;
-          }
-          const found = matchesData.find(x =>
-            x.home.includes(homeFR) && x.away.includes(awayFR)
-          );
-          if (!found) {
-            console.warn("⚠️ Match non trouvé:", homeFR, "vs", awayFR);
-            continue;
-          }
-          const hs = m.score?.fullTime?.home;
-          const as_ = m.score?.fullTime?.away;
-          if (hs === null || hs === undefined) continue;
-          await supabase.from("results").upsert(
-            { match_id: found.id, home_score: hs, away_score: as_ },
-            { onConflict: "match_id" }
-          );
-          apiSynced++;
-        }
-        console.log(`✅ Sync API: ${apiSynced} résultats mis à jour`);
-      } else {
-        console.warn("⚠️ API football-data non disponible (status", res.status, ")");
+  try {
+    const res = await fetch("/api/sync-results");
+    if (res.ok) {
+      const data = await res.json();
+      const apiMatches = data.matches || [];
+      for (const m of apiMatches) {
+        const homeFR = TEAM_MAP[m.homeTeam?.name];
+        const awayFR = TEAM_MAP[m.awayTeam?.name];
+        if (!homeFR || !awayFR) continue;
+        const found = matchesData.find(x =>
+          x.home.includes(homeFR) && x.away.includes(awayFR)
+        );
+        if (!found) continue;
+        const hs = m.score?.fullTime?.home;
+        const as_ = m.score?.fullTime?.away;
+        if (hs === null || hs === undefined) continue;
+        await supabase.from("results").upsert(
+          { match_id: found.id, home_score: hs, away_score: as_ },
+          { onConflict: "match_id" }
+        );
+        apiSynced++;
       }
-    } catch(e) {
-      console.error("Erreur sync API:", e);
     }
+  } catch(e) {
+    // proxy indisponible (ex: dev local) → fallback
   }
 
-  // Fallback : injecter les résultats connus si l'API n'a rien renvoyé
+  // Fallback : résultats connus si le proxy ne renvoie rien
   if (apiSynced === 0) {
-    console.log("📋 Injection des résultats connus (fallback)...");
     for (const r of KNOWN_RESULTS) {
       await supabase.from("results").upsert(r, { onConflict: "match_id" });
     }
-    console.log(`✅ ${KNOWN_RESULTS.length} résultats connus injectés`);
   }
 }
 
