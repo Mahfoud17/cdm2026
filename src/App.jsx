@@ -38,33 +38,83 @@ const TEAM_MAP = {
   "Democratic Republic of Congo":"RD Congo","Congo":"RD Congo",
 };
 
+// ─── RÉSULTATS CONNUS (seed de secours si l'API ne répond pas) ───────────────
+// Mis à jour manuellement au fil des matchs joués
+const KNOWN_RESULTS = [
+  { match_id:  1, home_score: 2, away_score: 0 }, // Mexique 2-0 Afrique du Sud
+  { match_id:  2, home_score: 2, away_score: 1 }, // Corée du Sud 2-1 Tchéquie
+  { match_id:  7, home_score: 1, away_score: 1 }, // Canada 1-1 Bosnie-Herz.
+  { match_id:  8, home_score: 1, away_score: 1 }, // Qatar 1-1 Suisse
+  { match_id: 13, home_score: 1, away_score: 1 }, // Brésil 1-1 Maroc
+  { match_id: 14, home_score: 1, away_score: 1 }, // Haïti 1-1 Écosse
+  { match_id: 19, home_score: 4, away_score: 1 }, // États-Unis 4-1 Paraguay
+  { match_id: 20, home_score: 2, away_score: 0 }, // Australie 2-0 Turquie
+  { match_id: 25, home_score: 7, away_score: 1 }, // Allemagne 7-1 Curaçao
+  { match_id: 26, home_score: 1, away_score: 0 }, // Côte d'Ivoire 1-0 Équateur
+  { match_id: 31, home_score: 2, away_score: 2 }, // Pays-Bas 2-2 Japon
+  { match_id: 32, home_score: 5, away_score: 1 }, // Suède 5-1 Tunisie
+  { match_id: 37, home_score: 1, away_score: 1 }, // Belgique 1-1 Égypte
+  { match_id: 38, home_score: 2, away_score: 2 }, // Iran 2-2 Nouvelle-Zélande
+  { match_id: 43, home_score: 0, away_score: 0 }, // Espagne 0-0 Cap-Vert
+  { match_id: 44, home_score: 1, away_score: 1 }, // Arabie Saoudite 1-1 Uruguay
+  { match_id: 49, home_score: 3, away_score: 1 }, // France 3-1 Sénégal
+  { match_id: 50, home_score: 1, away_score: 4 }, // Irak 1-4 Norvège
+  { match_id: 55, home_score: 3, away_score: 1 }, // Argentine 3-1 Algérie
+];
+
 // Synchronise automatiquement les résultats terminés depuis football-data.org
+// Si l'API échoue ou ne renvoie rien, on utilise KNOWN_RESULTS comme fallback.
 async function syncResultsFromAPI(matchesData) {
-  if (!FOOTBALL_KEY) return;
-  try {
-    const res = await fetch(
-      "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED&season=2026",
-      { headers: { "X-Auth-Token": FOOTBALL_KEY } }
-    );
-    if (!res.ok) return;
-    const data = await res.json();
-    for (const m of (data.matches || [])) {
-      const homeFR = TEAM_MAP[m.homeTeam?.name];
-      const awayFR = TEAM_MAP[m.awayTeam?.name];
-      if (!homeFR || !awayFR) continue;
-      const found = matchesData.find(x =>
-        x.home.includes(homeFR) && x.away.includes(awayFR)
+  let apiSynced = 0;
+  if (FOOTBALL_KEY) {
+    try {
+      const res = await fetch(
+        "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED&season=2026",
+        { headers: { "X-Auth-Token": FOOTBALL_KEY } }
       );
-      if (!found) continue;
-      const hs = m.score?.fullTime?.home;
-      const as_ = m.score?.fullTime?.away;
-      if (hs === null || hs === undefined) continue;
-      await supabase.from("results").upsert(
-        { match_id: found.id, home_score: hs, away_score: as_ },
-        { onConflict: "match_id" }
-      );
+      if (res.ok) {
+        const data = await res.json();
+        const apiMatches = data.matches || [];
+        for (const m of apiMatches) {
+          const homeFR = TEAM_MAP[m.homeTeam?.name];
+          const awayFR = TEAM_MAP[m.awayTeam?.name];
+          if (!homeFR || !awayFR) {
+            console.warn("⚠️ Équipe non mappée:", m.homeTeam?.name, "vs", m.awayTeam?.name);
+            continue;
+          }
+          const found = matchesData.find(x =>
+            x.home.includes(homeFR) && x.away.includes(awayFR)
+          );
+          if (!found) {
+            console.warn("⚠️ Match non trouvé:", homeFR, "vs", awayFR);
+            continue;
+          }
+          const hs = m.score?.fullTime?.home;
+          const as_ = m.score?.fullTime?.away;
+          if (hs === null || hs === undefined) continue;
+          await supabase.from("results").upsert(
+            { match_id: found.id, home_score: hs, away_score: as_ },
+            { onConflict: "match_id" }
+          );
+          apiSynced++;
+        }
+        console.log(`✅ Sync API: ${apiSynced} résultats mis à jour`);
+      } else {
+        console.warn("⚠️ API football-data non disponible (status", res.status, ")");
+      }
+    } catch(e) {
+      console.error("Erreur sync API:", e);
     }
-  } catch(e) { console.error("Erreur sync API:", e); }
+  }
+
+  // Fallback : injecter les résultats connus si l'API n'a rien renvoyé
+  if (apiSynced === 0) {
+    console.log("📋 Injection des résultats connus (fallback)...");
+    for (const r of KNOWN_RESULTS) {
+      await supabase.from("results").upsert(r, { onConflict: "match_id" });
+    }
+    console.log(`✅ ${KNOWN_RESULTS.length} résultats connus injectés`);
+  }
 }
 
 // ─── MATCHES DATA ────────────────────────────────────────────────────────────
