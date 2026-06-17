@@ -53,15 +53,12 @@ const STAGE_MAP = {
   "FINAL":           "Finale",
 };
 
-// ── Récupère le calendrier complet (104 matchs) depuis football-data.org
+// ── Récupère le calendrier complet (104 matchs) via notre fonction Vercel
+// (qui elle-même interroge football-data.org, pour éviter le blocage CORS)
 // et les enregistre/actualise dans la table Supabase "matches".
 async function syncMatchesFromAPI() {
-  if (!FOOTBALL_KEY) return;
   try {
-    const res = await fetch(
-      "https://api.football-data.org/v4/competitions/2000/matches",
-      { headers: { "X-Auth-Token": FOOTBALL_KEY } }
-    );
+    const res = await fetch("/api/matches");
     if (!res.ok) return;
     const data = await res.json();
     const apiMatches = data.matches || [];
