@@ -29,6 +29,8 @@ const TEAM_MAP = {
   "Poland":"Pologne","Egypt":"Egypte","Serbia":"Serbie","Colombia":"Colombie",
   "Uzbekistan":"Ouzbékistan","England":"Angleterre","Croatia":"Croatie",
   "Ghana":"Ghana","Panama":"Panama",
+  "Iraq":"Irak",
+  "Congo DR":"RD Congo","DR Congo":"RD Congo","Congo DRC":"RD Congo","Democratic Republic of Congo":"RD Congo",
 };
 
 // Synchronise automatiquement les résultats terminés depuis football-data.org
@@ -36,7 +38,7 @@ async function syncResultsFromAPI(matchesData) {
   if (!FOOTBALL_KEY) return;
   try {
     const res = await fetch(
-      "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED",
+      "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED&season=2026",
       { headers: { "X-Auth-Token": FOOTBALL_KEY } }
     );
     if (!res.ok) return;
@@ -119,12 +121,12 @@ const MATCHES = [
   { id:46, group:"Groupe H", home:"🇸🇦 Arabie Saoudite",away:"🇦🇷 Argentine",       date:"2026-06-23", time:"01:00", stage:"Groupes" },
   { id:47, group:"Groupe H", home:"🇳🇬 Nigéria",        away:"🇸🇦 Arabie Saoudite", date:"2026-06-28", time:"22:00", stage:"Groupes" },
   { id:48, group:"Groupe H", home:"🇦🇷 Argentine",      away:"🇵🇹 Portugal",        date:"2026-06-28", time:"22:00", stage:"Groupes" },
-  // ── GROUPE I : France, Sénégal, Norvège, Barragiste
+  // ── GROUPE I : France, Sénégal, Norvège, Irak
   { id:49, group:"Groupe I", home:"🇫🇷 France",         away:"🇸🇳 Sénégal",        date:"2026-06-16", time:"21:00", stage:"Groupes" },
-  { id:50, group:"Groupe I", home:"🇳🇴 Norvège",        away:"🏳️ Barragiste",      date:"2026-06-16", time:"18:00", stage:"Groupes" },
-  { id:51, group:"Groupe I", home:"🇫🇷 France",         away:"🏳️ Barragiste",      date:"2026-06-22", time:"23:00", stage:"Groupes" },
+  { id:50, group:"Groupe I", home:"🇳🇴 Norvège",        away:"🇮🇶 Irak",      date:"2026-06-16", time:"18:00", stage:"Groupes" },
+  { id:51, group:"Groupe I", home:"🇫🇷 France",         away:"🇮🇶 Irak",      date:"2026-06-22", time:"23:00", stage:"Groupes" },
   { id:52, group:"Groupe I", home:"🇸🇳 Sénégal",        away:"🇳🇴 Norvège",        date:"2026-06-22", time:"20:00", stage:"Groupes" },
-  { id:53, group:"Groupe I", home:"🏳️ Barragiste",     away:"🇸🇳 Sénégal",        date:"2026-06-28", time:"20:00", stage:"Groupes" },
+  { id:53, group:"Groupe I", home:"🇮🇶 Irak",     away:"🇸🇳 Sénégal",        date:"2026-06-28", time:"20:00", stage:"Groupes" },
   { id:54, group:"Groupe I", home:"🇳🇴 Norvège",        away:"🇫🇷 France",         date:"2026-06-28", time:"20:00", stage:"Groupes" },
   // ── GROUPE J : Uruguay, Pologne, Egypte, Serbie
   { id:55, group:"Groupe J", home:"🇺🇾 Uruguay",        away:"🇵🇱 Pologne",         date:"2026-06-16", time:"22:00", stage:"Groupes" },
@@ -133,13 +135,13 @@ const MATCHES = [
   { id:58, group:"Groupe J", home:"🇵🇱 Pologne",        away:"🇷🇸 Serbie",          date:"2026-06-23", time:"19:00", stage:"Groupes" },
   { id:59, group:"Groupe J", home:"🇷🇸 Serbie",         away:"🇺🇾 Uruguay",         date:"2026-06-29", time:"20:00", stage:"Groupes" },
   { id:60, group:"Groupe J", home:"🇵🇱 Pologne",        away:"🇪🇬 Egypte",          date:"2026-06-29", time:"20:00", stage:"Groupes" },
-  // ── GROUPE K : Portugal… non, Colombie, Ouzbékistan, Portugal, Barragiste
+  // ── GROUPE K : Portugal, Colombie, Ouzbékistan, RD Congo
   { id:61, group:"Groupe K", home:"🇨🇴 Colombie",       away:"🇺🇿 Ouzbékistan",    date:"2026-06-17", time:"22:00", stage:"Groupes" },
-  { id:62, group:"Groupe K", home:"🇵🇹 Portugal... attend",away:"🏳️ Barragiste2", date:"2026-06-17", time:"19:00", stage:"Groupes" },
-  { id:63, group:"Groupe K", home:"🇨🇴 Colombie",       away:"🏳️ Barragiste2",    date:"2026-06-23", time:"22:00", stage:"Groupes" },
-  { id:64, group:"Groupe K", home:"🇺🇿 Ouzbékistan",    away:"🏳️ Barragiste2",    date:"2026-06-24", time:"01:00", stage:"Groupes" },
-  { id:65, group:"Groupe K", home:"🏳️ Barragiste2",    away:"🇨🇴 Colombie",       date:"2026-06-29", time:"22:00", stage:"Groupes" },
-  { id:66, group:"Groupe K", home:"🏳️ Barragiste2",    away:"🇺🇿 Ouzbékistan",    date:"2026-06-29", time:"22:00", stage:"Groupes" },
+  { id:62, group:"Groupe K", home:"🇵🇹 Portugal",        away:"🇨🇩 RD Congo",       date:"2026-06-17", time:"19:00", stage:"Groupes" },
+  { id:63, group:"Groupe K", home:"🇨🇴 Colombie",       away:"🇨🇩 RD Congo",    date:"2026-06-23", time:"22:00", stage:"Groupes" },
+  { id:64, group:"Groupe K", home:"🇺🇿 Ouzbékistan",    away:"🇨🇩 RD Congo",    date:"2026-06-24", time:"01:00", stage:"Groupes" },
+  { id:65, group:"Groupe K", home:"🇨🇩 RD Congo",    away:"🇨🇴 Colombie",       date:"2026-06-29", time:"22:00", stage:"Groupes" },
+  { id:66, group:"Groupe K", home:"🇨🇩 RD Congo",    away:"🇺🇿 Ouzbékistan",    date:"2026-06-29", time:"22:00", stage:"Groupes" },
   // ── GROUPE L : Angleterre, Croatie, Ghana, Panama
   { id:67, group:"Groupe L", home:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre",    away:"🇵🇦 Panama",         date:"2026-06-17", time:"22:00", stage:"Groupes" },
   { id:68, group:"Groupe L", home:"🇭🇷 Croatie",        away:"🇬🇭 Ghana",           date:"2026-06-18", time:"01:00", stage:"Groupes" },
