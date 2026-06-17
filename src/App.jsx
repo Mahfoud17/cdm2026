@@ -505,7 +505,7 @@ export default function App() {
           <LeaderboardView leaderboard={leaderboard} currentUser={currentUser} matchesPlayed={results.length} />
         )}
         {tab === "resultats" && (
-          <ResultsView matches={MATCHES.filter(m=>resultsMap[m.id])} resultsMap={resultsMap} users={users} predsMap={predsMap} />
+          <ResultsView matches={MATCHES.filter(m=>resultsMap[m.id]).sort((a,b)=>(`${a.date} ${a.time}`).localeCompare(`${b.date} ${b.time}`))} resultsMap={resultsMap} users={users} predsMap={predsMap} />
         )}
       </main>
 
@@ -604,8 +604,9 @@ function PronosticView({ matches, currentUser, predsMap, resultsMap, onPredict, 
   const stages = ["all","Groupes","32èmes","16èmes","Quarts","Demies","3e place","Finale"];
   const labels  = { all:"Tous", Groupes:"Groupes", "32èmes":"32èmes", "16èmes":"16èmes", Quarts:"Quarts", Demies:"Demies", "3e place":"3e place", Finale:"Finale" };
   const filtered = filter==="all" ? matches : matches.filter(m=>m.stage===filter);
-  const upcoming = filtered.filter(m=>!resultsMap[m.id]);
-  const done     = filtered.filter(m=> resultsMap[m.id]);
+  const sortByDate = (a, b) => (`${a.date} ${a.time}`).localeCompare(`${b.date} ${b.time}`);
+  const upcoming = filtered.filter(m=>!resultsMap[m.id]).sort(sortByDate);
+  const done     = filtered.filter(m=> resultsMap[m.id]).sort(sortByDate);
 
   return (
     <div>
