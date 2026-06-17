@@ -59,7 +59,7 @@ const KNOWN_RESULTS = [
   { match_id: 44, home_score: 1, away_score: 1 }, // Arabie Saoudite 1-1 Uruguay
   { match_id: 49, home_score: 3, away_score: 1 }, // France 3-1 Sénégal
   { match_id: 50, home_score: 1, away_score: 4 }, // Irak 1-4 Norvège
-  { match_id: 55, home_score: 3, away_score: 1 }, // Argentine 3-1 Algérie
+  { match_id: 55, home_score: 3, away_score: 0 }, // Argentine 3-0 Algérie (hat-trick Messi)
 ];
 
 // Synchronise automatiquement les résultats terminés.
