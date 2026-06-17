@@ -14,178 +14,88 @@ const SUPABASE_KEY   = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const FOOTBALL_KEY   = import.meta.env.VITE_FOOTBALL_API_KEY;
 const supabase       = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ─── CORRESPONDANCE noms API (anglais) → noms affichés ───────────────────────
-const TEAM_MAP = {
-  "Mexico":"Mexique","South Africa":"Afrique du Sud","Korea Republic":"Corée du Sud",
-  "Czechia":"Tchéquie","Canada":"Canada","Bosnia and Herzegovina":"Bosnie-Herz.",
-  "Qatar":"Qatar","Switzerland":"Suisse","Brazil":"Brésil","Morocco":"Maroc",
-  "Haiti":"Haïti","Scotland":"Écosse","USA":"États-Unis","Paraguay":"Paraguay",
-  "Australia":"Australie","Turkey":"Turquie","Germany":"Allemagne","Curaçao":"Curaçao",
-  "Ivory Coast":"Côte d'Ivoire","Ecuador":"Équateur","Netherlands":"Pays-Bas",
-  "Japan":"Japon","Senegal":"Sénégal","Venezuela":"Venezuela","Spain":"Espagne",
-  "Belgium":"Belgique","Iran":"Iran","New Zealand":"Nouvelle-Zélande",
-  "Portugal":"Portugal","Saudi Arabia":"Arabie Saoudite","Argentina":"Argentine",
-  "Nigeria":"Nigéria","France":"France","Norway":"Norvège","Uruguay":"Uruguay",
-  "Poland":"Pologne","Egypt":"Egypte","Serbia":"Serbie","Colombia":"Colombie",
-  "Uzbekistan":"Ouzbékistan","England":"Angleterre","Croatia":"Croatie",
-  "Ghana":"Ghana","Panama":"Panama",
+// ─── TRADUCTION noms d'équipes (anglais API → français affiché) ─────────────
+const TEAM_FR = {
+  "Mexico":"🇲🇽 Mexique","South Africa":"🇿🇦 Afrique du Sud","Korea Republic":"🇰🇷 Corée du Sud",
+  "Czechia":"🇨🇿 Tchéquie","Canada":"🇨🇦 Canada","Bosnia and Herzegovina":"🇧🇦 Bosnie-Herz.",
+  "Qatar":"🇶🇦 Qatar","Switzerland":"🇨🇭 Suisse","Brazil":"🇧🇷 Brésil","Morocco":"🇲🇦 Maroc",
+  "Haiti":"🇭🇹 Haïti","Scotland":"🏴 Écosse","United States":"🇺🇸 États-Unis","USA":"🇺🇸 États-Unis",
+  "Paraguay":"🇵🇾 Paraguay","Australia":"🇦🇺 Australie","Turkey":"🇹🇷 Turquie","Türkiye":"🇹🇷 Turquie",
+  "Germany":"🇩🇪 Allemagne","Curaçao":"🇨🇼 Curaçao","Ivory Coast":"🇨🇮 Côte d'Ivoire",
+  "Côte d'Ivoire":"🇨🇮 Côte d'Ivoire","Ecuador":"🇪🇨 Équateur","Netherlands":"🇳🇱 Pays-Bas",
+  "Japan":"🇯🇵 Japon","Senegal":"🇸🇳 Sénégal","Sweden":"🇸🇪 Suède","Tunisia":"🇹🇳 Tunisie",
+  "Spain":"🇪🇸 Espagne","Belgium":"🇧🇪 Belgique","Iran":"🇮🇷 Iran","IR Iran":"🇮🇷 Iran",
+  "New Zealand":"🇳🇿 Nouvelle-Zélande","Portugal":"🇵🇹 Portugal","Saudi Arabia":"🇸🇦 Arabie Saoudite",
+  "Argentina":"🇦🇷 Argentine","Nigeria":"🇳🇬 Nigéria","France":"🇫🇷 France","Norway":"🇳🇴 Norvège",
+  "Iraq":"🇮🇶 Irak","Uruguay":"🇺🇾 Uruguay","Cape Verde":"🇨🇻 Cap-Vert","Algeria":"🇩🇿 Algérie",
+  "Austria":"🇦🇹 Autriche","Jordan":"🇯🇴 Jordanie","Poland":"🇵🇱 Pologne","Egypt":"🇪🇬 Egypte",
+  "Serbia":"🇷🇸 Serbie","Colombia":"🇨🇴 Colombie","Uzbekistan":"🇺🇿 Ouzbékistan",
+  "DR Congo":"🇨🇩 RD Congo","Congo DR":"🇨🇩 RD Congo","England":"🏴 Angleterre","Croatia":"🇭🇷 Croatie",
+  "Ghana":"🇬🇭 Ghana","Panama":"🇵🇦 Panama",
+};
+function teamLabel(name) { return TEAM_FR[name] || ("🏳️ " + name); }
+
+// Convertit une date UTC ISO en date+heure locale française (Europe/Paris) "YYYY-MM-DD" / "HH:MM"
+function splitUtcToParis(utcDate) {
+  const d = new Date(utcDate);
+  const datePart = d.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }); // YYYY-MM-DD
+  const timePart = d.toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour:"2-digit", minute:"2-digit", hour12:false });
+  return { date: datePart, time: timePart };
+}
+
+const STAGE_MAP = {
+  "GROUP_STAGE":     "Groupes",
+  "LAST_32":         "32èmes",
+  "LAST_16":         "16èmes",
+  "QUARTER_FINALS":  "Quarts",
+  "SEMI_FINALS":     "Demies",
+  "THIRD_PLACE":     "3e place",
+  "FINAL":           "Finale",
 };
 
-// Synchronise automatiquement les résultats terminés depuis football-data.org
-async function syncResultsFromAPI(matchesData) {
+// ── Récupère le calendrier complet (104 matchs) depuis football-data.org
+// et les enregistre/actualise dans la table Supabase "matches".
+async function syncMatchesFromAPI() {
   if (!FOOTBALL_KEY) return;
   try {
     const res = await fetch(
-      "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED",
+      "https://api.football-data.org/v4/competitions/2000/matches",
       { headers: { "X-Auth-Token": FOOTBALL_KEY } }
     );
     if (!res.ok) return;
     const data = await res.json();
-    for (const m of (data.matches || [])) {
-      const homeFR = TEAM_MAP[m.homeTeam?.name];
-      const awayFR = TEAM_MAP[m.awayTeam?.name];
-      if (!homeFR || !awayFR) continue;
-      const found = matchesData.find(x =>
-        x.home.includes(homeFR) && x.away.includes(awayFR)
-      );
-      if (!found) continue;
+    const apiMatches = data.matches || [];
+    if (apiMatches.length === 0) return;
+
+    const rows = apiMatches.map(m => {
+      const { date, time } = splitUtcToParis(m.utcDate);
+      const group = m.group ? ("Groupe " + m.group.replace("GROUP_", "")) : "Phase finale";
+      const stage = STAGE_MAP[m.stage] || m.stage || "Groupes";
+      return {
+        id: m.id,
+        home: teamLabel(m.homeTeam?.name || m.homeTeam?.shortName || "À déterminer"),
+        away: teamLabel(m.awayTeam?.name || m.awayTeam?.shortName || "À déterminer"),
+        match_group: group,
+        stage,
+        match_date: date,
+        match_time: time,
+      };
+    });
+
+    await supabase.from("matches").upsert(rows, { onConflict: "id" });
+
+    // Synchronise aussi les résultats des matchs terminés
+    for (const m of apiMatches) {
       const hs = m.score?.fullTime?.home;
       const as_ = m.score?.fullTime?.away;
-      if (hs === null || hs === undefined) continue;
+      if (hs === null || hs === undefined || as_ === null || as_ === undefined) continue;
       await supabase.from("results").upsert(
-        { match_id: found.id, home_score: hs, away_score: as_ },
+        { match_id: m.id, home_score: hs, away_score: as_ },
         { onConflict: "match_id" }
       );
     }
-  } catch(e) { console.error("Erreur sync API:", e); }
+  } catch(e) { console.error("Erreur sync matchs API:", e); }
 }
-
-// ─── MATCHES DATA ────────────────────────────────────────────────────────────
-
-const MATCHES = [
-  // ── GROUPE A : Mexique, Corée du Sud, Afrique du Sud, Tchéquie
-  { id:1,  group:"Groupe A", home:"🇲🇽 Mexique",        away:"🇿🇦 Afrique du Sud",  date:"2026-06-11", time:"21:00", stage:"Groupes" },
-  { id:2,  group:"Groupe A", home:"🇰🇷 Corée du Sud",   away:"🇨🇿 Tchéquie",        date:"2026-06-12", time:"04:00", stage:"Groupes" },
-  { id:3,  group:"Groupe A", home:"🇨🇿 Tchéquie",       away:"🇿🇦 Afrique du Sud",  date:"2026-06-18", time:"18:00", stage:"Groupes" },
-  { id:4,  group:"Groupe A", home:"🇲🇽 Mexique",        away:"🇰🇷 Corée du Sud",    date:"2026-06-19", time:"03:00", stage:"Groupes" },
-  { id:5,  group:"Groupe A", home:"🇨🇿 Tchéquie",       away:"🇲🇽 Mexique",         date:"2026-06-25", time:"03:00", stage:"Groupes" },
-  { id:6,  group:"Groupe A", home:"🇿🇦 Afrique du Sud", away:"🇰🇷 Corée du Sud",    date:"2026-06-25", time:"03:00", stage:"Groupes" },
-  // ── GROUPE B : Canada, Qatar, Suisse, Bosnie-Herzégovine
-  { id:7,  group:"Groupe B", home:"🇨🇦 Canada",         away:"🇧🇦 Bosnie-Herz.",    date:"2026-06-12", time:"21:00", stage:"Groupes" },
-  { id:8,  group:"Groupe B", home:"🇶🇦 Qatar",          away:"🇨🇭 Suisse",          date:"2026-06-13", time:"21:00", stage:"Groupes" },
-  { id:9,  group:"Groupe B", home:"🇨🇦 Canada",         away:"🇶🇦 Qatar",           date:"2026-06-19", time:"00:00", stage:"Groupes" },
-  { id:10, group:"Groupe B", home:"🇧🇦 Bosnie-Herz.",   away:"🇨🇭 Suisse",          date:"2026-06-19", time:"21:00", stage:"Groupes" },
-  { id:11, group:"Groupe B", home:"🇧🇦 Bosnie-Herz.",   away:"🇶🇦 Qatar",           date:"2026-06-25", time:"21:00", stage:"Groupes" },
-  { id:12, group:"Groupe B", home:"🇨🇭 Suisse",         away:"🇨🇦 Canada",          date:"2026-06-25", time:"21:00", stage:"Groupes" },
-  // ── GROUPE C : Brésil, Maroc, Haïti, Écosse
-  { id:13, group:"Groupe C", home:"🇧🇷 Brésil",         away:"🇲🇦 Maroc",           date:"2026-06-13", time:"00:00", stage:"Groupes" },
-  { id:14, group:"Groupe C", home:"🇭🇹 Haïti",          away:"🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse",         date:"2026-06-13", time:"03:00", stage:"Groupes" },
-  { id:15, group:"Groupe C", home:"🇧🇷 Brésil",         away:"🇭🇹 Haïti",           date:"2026-06-19", time:"18:00", stage:"Groupes" },
-  { id:16, group:"Groupe C", home:"🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse",        away:"🇲🇦 Maroc",           date:"2026-06-19", time:"21:00", stage:"Groupes" },
-  { id:17, group:"Groupe C", home:"🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse",        away:"🇧🇷 Brésil",          date:"2026-06-25", time:"00:00", stage:"Groupes" },
-  { id:18, group:"Groupe C", home:"🇲🇦 Maroc",          away:"🇭🇹 Haïti",           date:"2026-06-25", time:"00:00", stage:"Groupes" },
-  // ── GROUPE D : États-Unis, Paraguay, Australie, Turquie
-  { id:19, group:"Groupe D", home:"🇺🇸 États-Unis",     away:"🇵🇾 Paraguay",        date:"2026-06-13", time:"03:00", stage:"Groupes" },
-  { id:20, group:"Groupe D", home:"🇦🇺 Australie",      away:"🇹🇷 Turquie",         date:"2026-06-13", time:"06:00", stage:"Groupes" },
-  { id:21, group:"Groupe D", home:"🇺🇸 États-Unis",     away:"🇦🇺 Australie",       date:"2026-06-20", time:"00:00", stage:"Groupes" },
-  { id:22, group:"Groupe D", home:"🇵🇾 Paraguay",       away:"🇹🇷 Turquie",         date:"2026-06-20", time:"03:00", stage:"Groupes" },
-  { id:23, group:"Groupe D", home:"🇹🇷 Turquie",        away:"🇺🇸 États-Unis",      date:"2026-06-26", time:"00:00", stage:"Groupes" },
-  { id:24, group:"Groupe D", home:"🇵🇾 Paraguay",       away:"🇦🇺 Australie",       date:"2026-06-26", time:"00:00", stage:"Groupes" },
-  // ── GROUPE E : Allemagne, Côte d'Ivoire, Équateur, Curaçao
-  { id:25, group:"Groupe E", home:"🇩🇪 Allemagne",      away:"🇨🇼 Curaçao",         date:"2026-06-14", time:"19:00", stage:"Groupes" },
-  { id:26, group:"Groupe E", home:"🇨🇮 Côte d'Ivoire", away:"🇪🇨 Équateur",        date:"2026-06-14", time:"22:00", stage:"Groupes" },
-  { id:27, group:"Groupe E", home:"🇩🇪 Allemagne",      away:"🇨🇮 Côte d'Ivoire",  date:"2026-06-20", time:"19:00", stage:"Groupes" },
-  { id:28, group:"Groupe E", home:"🇪🇨 Équateur",       away:"🇨🇼 Curaçao",         date:"2026-06-20", time:"22:00", stage:"Groupes" },
-  { id:29, group:"Groupe E", home:"🇨🇼 Curaçao",        away:"🇨🇮 Côte d'Ivoire",  date:"2026-06-26", time:"19:00", stage:"Groupes" },
-  { id:30, group:"Groupe E", home:"🇪🇨 Équateur",       away:"🇩🇪 Allemagne",       date:"2026-06-26", time:"19:00", stage:"Groupes" },
-  // ── GROUPE F : Pays-Bas, Japon, Sénégal, Venezuela
-  { id:31, group:"Groupe F", home:"🇳🇱 Pays-Bas",       away:"🇯🇵 Japon",           date:"2026-06-14", time:"22:00", stage:"Groupes" },
-  { id:32, group:"Groupe F", home:"🇸🇳 Sénégal",        away:"🇻🇪 Venezuela",       date:"2026-06-15", time:"01:00", stage:"Groupes" },
-  { id:33, group:"Groupe F", home:"🇳🇱 Pays-Bas",       away:"🇸🇳 Sénégal",        date:"2026-06-21", time:"19:00", stage:"Groupes" },
-  { id:34, group:"Groupe F", home:"🇯🇵 Japon",          away:"🇻🇪 Venezuela",       date:"2026-06-21", time:"22:00", stage:"Groupes" },
-  { id:35, group:"Groupe F", home:"🇻🇪 Venezuela",      away:"🇳🇱 Pays-Bas",        date:"2026-06-27", time:"19:00", stage:"Groupes" },
-  { id:36, group:"Groupe F", home:"🇯🇵 Japon",          away:"🇸🇳 Sénégal",        date:"2026-06-27", time:"19:00", stage:"Groupes" },
-  // ── GROUPE G : Espagne, Belgique, Iran, Nouvelle-Zélande
-  { id:37, group:"Groupe G", home:"🇪🇸 Espagne",        away:"🇳🇿 Nouvelle-Zélande",date:"2026-06-15", time:"19:00", stage:"Groupes" },
-  { id:38, group:"Groupe G", home:"🇧🇪 Belgique",       away:"🇮🇷 Iran",            date:"2026-06-15", time:"22:00", stage:"Groupes" },
-  { id:39, group:"Groupe G", home:"🇪🇸 Espagne",        away:"🇧🇪 Belgique",        date:"2026-06-21", time:"22:00", stage:"Groupes" },
-  { id:40, group:"Groupe G", home:"🇮🇷 Iran",           away:"🇳🇿 Nouvelle-Zélande",date:"2026-06-22", time:"01:00", stage:"Groupes" },
-  { id:41, group:"Groupe G", home:"🇧🇪 Belgique",       away:"🇳🇿 Nouvelle-Zélande",date:"2026-06-27", time:"22:00", stage:"Groupes" },
-  { id:42, group:"Groupe G", home:"🇮🇷 Iran",           away:"🇪🇸 Espagne",         date:"2026-06-27", time:"22:00", stage:"Groupes" },
-  // ── GROUPE H : Portugal, Argentine, Nigéria, Arabie Saoudite
-  { id:43, group:"Groupe H", home:"🇵🇹 Portugal",       away:"🇸🇦 Arabie Saoudite", date:"2026-06-15", time:"22:00", stage:"Groupes" },
-  { id:44, group:"Groupe H", home:"🇦🇷 Argentine",      away:"🇳🇬 Nigéria",         date:"2026-06-16", time:"01:00", stage:"Groupes" },
-  { id:45, group:"Groupe H", home:"🇵🇹 Portugal",       away:"🇳🇬 Nigéria",         date:"2026-06-22", time:"22:00", stage:"Groupes" },
-  { id:46, group:"Groupe H", home:"🇸🇦 Arabie Saoudite",away:"🇦🇷 Argentine",       date:"2026-06-23", time:"01:00", stage:"Groupes" },
-  { id:47, group:"Groupe H", home:"🇳🇬 Nigéria",        away:"🇸🇦 Arabie Saoudite", date:"2026-06-28", time:"22:00", stage:"Groupes" },
-  { id:48, group:"Groupe H", home:"🇦🇷 Argentine",      away:"🇵🇹 Portugal",        date:"2026-06-28", time:"22:00", stage:"Groupes" },
-  // ── GROUPE I : France, Sénégal, Norvège, Barragiste
-  { id:49, group:"Groupe I", home:"🇫🇷 France",         away:"🇸🇳 Sénégal",        date:"2026-06-16", time:"21:00", stage:"Groupes" },
-  { id:50, group:"Groupe I", home:"🇳🇴 Norvège",        away:"🏳️ Barragiste",      date:"2026-06-16", time:"18:00", stage:"Groupes" },
-  { id:51, group:"Groupe I", home:"🇫🇷 France",         away:"🏳️ Barragiste",      date:"2026-06-22", time:"23:00", stage:"Groupes" },
-  { id:52, group:"Groupe I", home:"🇸🇳 Sénégal",        away:"🇳🇴 Norvège",        date:"2026-06-22", time:"20:00", stage:"Groupes" },
-  { id:53, group:"Groupe I", home:"🏳️ Barragiste",     away:"🇸🇳 Sénégal",        date:"2026-06-28", time:"20:00", stage:"Groupes" },
-  { id:54, group:"Groupe I", home:"🇳🇴 Norvège",        away:"🇫🇷 France",         date:"2026-06-28", time:"20:00", stage:"Groupes" },
-  // ── GROUPE J : Uruguay, Pologne, Egypte, Serbie
-  { id:55, group:"Groupe J", home:"🇺🇾 Uruguay",        away:"🇵🇱 Pologne",         date:"2026-06-16", time:"22:00", stage:"Groupes" },
-  { id:56, group:"Groupe J", home:"🇪🇬 Egypte",         away:"🇷🇸 Serbie",          date:"2026-06-16", time:"19:00", stage:"Groupes" },
-  { id:57, group:"Groupe J", home:"🇺🇾 Uruguay",        away:"🇪🇬 Egypte",          date:"2026-06-23", time:"22:00", stage:"Groupes" },
-  { id:58, group:"Groupe J", home:"🇵🇱 Pologne",        away:"🇷🇸 Serbie",          date:"2026-06-23", time:"19:00", stage:"Groupes" },
-  { id:59, group:"Groupe J", home:"🇷🇸 Serbie",         away:"🇺🇾 Uruguay",         date:"2026-06-29", time:"20:00", stage:"Groupes" },
-  { id:60, group:"Groupe J", home:"🇵🇱 Pologne",        away:"🇪🇬 Egypte",          date:"2026-06-29", time:"20:00", stage:"Groupes" },
-  // ── GROUPE K : Portugal… non, Colombie, Ouzbékistan, Portugal, Barragiste
-  { id:61, group:"Groupe K", home:"🇨🇴 Colombie",       away:"🇺🇿 Ouzbékistan",    date:"2026-06-17", time:"22:00", stage:"Groupes" },
-  { id:62, group:"Groupe K", home:"🇵🇹 Portugal... attend",away:"🏳️ Barragiste2", date:"2026-06-17", time:"19:00", stage:"Groupes" },
-  { id:63, group:"Groupe K", home:"🇨🇴 Colombie",       away:"🏳️ Barragiste2",    date:"2026-06-23", time:"22:00", stage:"Groupes" },
-  { id:64, group:"Groupe K", home:"🇺🇿 Ouzbékistan",    away:"🏳️ Barragiste2",    date:"2026-06-24", time:"01:00", stage:"Groupes" },
-  { id:65, group:"Groupe K", home:"🏳️ Barragiste2",    away:"🇨🇴 Colombie",       date:"2026-06-29", time:"22:00", stage:"Groupes" },
-  { id:66, group:"Groupe K", home:"🏳️ Barragiste2",    away:"🇺🇿 Ouzbékistan",    date:"2026-06-29", time:"22:00", stage:"Groupes" },
-  // ── GROUPE L : Angleterre, Croatie, Ghana, Panama
-  { id:67, group:"Groupe L", home:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre",    away:"🇵🇦 Panama",         date:"2026-06-17", time:"22:00", stage:"Groupes" },
-  { id:68, group:"Groupe L", home:"🇭🇷 Croatie",        away:"🇬🇭 Ghana",           date:"2026-06-18", time:"01:00", stage:"Groupes" },
-  { id:69, group:"Groupe L", home:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre",    away:"🇭🇷 Croatie",        date:"2026-06-24", time:"22:00", stage:"Groupes" },
-  { id:70, group:"Groupe L", home:"🇵🇦 Panama",         away:"🇬🇭 Ghana",           date:"2026-06-24", time:"19:00", stage:"Groupes" },
-  { id:71, group:"Groupe L", home:"🇬🇭 Ghana",          away:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre",    date:"2026-06-30", time:"20:00", stage:"Groupes" },
-  { id:72, group:"Groupe L", home:"🇵🇦 Panama",         away:"🇭🇷 Croatie",        date:"2026-06-30", time:"20:00", stage:"Groupes" },
-  // ── PHASE FINALE — 32es de finale (28-30 juin 2026) — 16 matchs
-  { id:81,  group:"Phase finale", home:"1er A", away:"2e B",        date:"2026-06-28", time:"18:00", stage:"32èmes" },
-  { id:82,  group:"Phase finale", home:"1er C", away:"2e D",        date:"2026-06-28", time:"21:00", stage:"32èmes" },
-  { id:83,  group:"Phase finale", home:"1er E", away:"2e F",        date:"2026-06-28", time:"00:00", stage:"32èmes" },
-  { id:84,  group:"Phase finale", home:"1er B", away:"3e (1)",      date:"2026-06-29", time:"18:00", stage:"32èmes" },
-  { id:85,  group:"Phase finale", home:"1er G", away:"3e (2)",      date:"2026-06-29", time:"21:00", stage:"32èmes" },
-  { id:86,  group:"Phase finale", home:"1er I", away:"3e (3)",      date:"2026-06-29", time:"00:00", stage:"32èmes" },
-  { id:87,  group:"Phase finale", home:"1er F", away:"2e E",        date:"2026-06-30", time:"18:00", stage:"32èmes" },
-  { id:88,  group:"Phase finale", home:"1er K", away:"3e (4)",      date:"2026-06-30", time:"21:00", stage:"32èmes" },
-  { id:89,  group:"Phase finale", home:"1er D", away:"3e (5)",      date:"2026-06-30", time:"00:00", stage:"32èmes" },
-  { id:90,  group:"Phase finale", home:"1er L", away:"2e K",        date:"2026-07-01", time:"18:00", stage:"32èmes" },
-  { id:91,  group:"Phase finale", home:"1er H", away:"3e (6)",      date:"2026-07-01", time:"21:00", stage:"32èmes" },
-  { id:92,  group:"Phase finale", home:"2e I",  away:"2e J",        date:"2026-07-01", time:"00:00", stage:"32èmes" },
-  { id:93,  group:"Phase finale", home:"1er J", away:"2e L",        date:"2026-07-02", time:"18:00", stage:"32èmes" },
-  { id:94,  group:"Phase finale", home:"2e G",  away:"2e H",        date:"2026-07-02", time:"21:00", stage:"32èmes" },
-  { id:95,  group:"Phase finale", home:"1er C... bis", away:"3e (7)",date:"2026-07-02", time:"00:00", stage:"32èmes" },
-  { id:96,  group:"Phase finale", home:"2e A",  away:"2e C",        date:"2026-07-03", time:"18:00", stage:"32èmes" },
-  // ── 16es de finale (7-11 juillet) — 8 matchs
-  { id:101, group:"Phase finale", home:"V81", away:"V82", date:"2026-07-04", time:"18:00", stage:"16èmes" },
-  { id:102, group:"Phase finale", home:"V83", away:"V84", date:"2026-07-04", time:"21:00", stage:"16èmes" },
-  { id:103, group:"Phase finale", home:"V85", away:"V86", date:"2026-07-05", time:"18:00", stage:"16èmes" },
-  { id:104, group:"Phase finale", home:"V87", away:"V88", date:"2026-07-05", time:"21:00", stage:"16èmes" },
-  { id:105, group:"Phase finale", home:"V89", away:"V90", date:"2026-07-06", time:"18:00", stage:"16èmes" },
-  { id:106, group:"Phase finale", home:"V91", away:"V92", date:"2026-07-06", time:"21:00", stage:"16èmes" },
-  { id:107, group:"Phase finale", home:"V93", away:"V94", date:"2026-07-07", time:"18:00", stage:"16èmes" },
-  { id:108, group:"Phase finale", home:"V95", away:"V96", date:"2026-07-07", time:"21:00", stage:"16èmes" },
-  // ── Quarts (9-11 juillet) — 4 matchs
-  { id:121, group:"Phase finale", home:"V101", away:"V102", date:"2026-07-09", time:"21:00", stage:"Quarts" },
-  { id:122, group:"Phase finale", home:"V103", away:"V104", date:"2026-07-10", time:"21:00", stage:"Quarts" },
-  { id:123, group:"Phase finale", home:"V105", away:"V106", date:"2026-07-11", time:"18:00", stage:"Quarts" },
-  { id:124, group:"Phase finale", home:"V107", away:"V108", date:"2026-07-11", time:"21:00", stage:"Quarts" },
-  // ── Demies (14-15 juillet) — 2 matchs
-  { id:131, group:"Phase finale", home:"V121", away:"V122", date:"2026-07-14", time:"21:00", stage:"Demies" },
-  { id:132, group:"Phase finale", home:"V123", away:"V124", date:"2026-07-15", time:"21:00", stage:"Demies" },
-  // ── 3e place (18 juillet)
-  { id:140, group:"Phase finale", home:"Perdant 131", away:"Perdant 132", date:"2026-07-18", time:"21:00", stage:"3e place" },
-  // ── Finale (19 juillet)
-  { id:141, group:"Phase finale", home:"V131", away:"V132", date:"2026-07-19", time:"21:00", stage:"Finale" },
-];
 
 const SCORING = { exact: 3, winner: 1 };
 
@@ -315,6 +225,7 @@ export default function App() {
   const [users,       setUsers]       = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [results,     setResults]     = useState([]);
+  const [matches,     setMatches]     = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [toast,       setToast]       = useState("");
 
@@ -328,24 +239,30 @@ export default function App() {
   // ── Fetch all data
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [u, p, r] = await Promise.all([
+    const [u, p, r, m] = await Promise.all([
       supabase.from("users").select("*").order("created_at"),
       supabase.from("predictions").select("*"),
       supabase.from("results").select("*"),
+      supabase.from("matches").select("*").order("match_date").order("match_time"),
     ]);
     if (u.data) setUsers(u.data);
     if (p.data) setPredictions(p.data);
     if (r.data) setResults(r.data);
+    if (m.data) setMatches(m.data.map(x => ({
+      id: x.id, home: x.home, away: x.away,
+      group: x.match_group, stage: x.stage,
+      date: x.match_date, time: x.match_time,
+    })));
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // ── Sync automatique résultats toutes les 5 minutes
+  // ── Sync automatique calendrier + résultats toutes les 5 minutes
   useEffect(() => {
-    syncResultsFromAPI(MATCHES).then(fetchAll);
+    syncMatchesFromAPI().then(fetchAll);
     const interval = setInterval(() => {
-      syncResultsFromAPI(MATCHES).then(fetchAll);
+      syncMatchesFromAPI().then(fetchAll);
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchAll]);
@@ -357,6 +274,7 @@ export default function App() {
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [fetchAll]);
+
 
   // ── Register
   async function handleRegister(username, password) {
@@ -482,7 +400,7 @@ export default function App() {
         {tab === "home" && (
           <HomeView
             currentUser={currentUser}
-            stats={{ users: users.length, played: results.length, remaining: MATCHES.filter(m=>!resultsMap[m.id]).length }}
+            stats={{ users: users.length, played: results.length, remaining: matches.filter(m=>!resultsMap[m.id]).length }}
             onRegister={()=>setModal("register")}
             onLogin={()=>setModal("login")}
             onLogout={handleLogout}
@@ -493,7 +411,7 @@ export default function App() {
         )}
         {tab === "pronostics" && (
           <PronosticView
-            matches={MATCHES}
+            matches={matches}
             currentUser={currentUser}
             predsMap={predsMap}
             resultsMap={resultsMap}
@@ -505,7 +423,7 @@ export default function App() {
           <LeaderboardView leaderboard={leaderboard} currentUser={currentUser} matchesPlayed={results.length} />
         )}
         {tab === "resultats" && (
-          <ResultsView matches={MATCHES.filter(m=>resultsMap[m.id])} resultsMap={resultsMap} users={users} predsMap={predsMap} />
+          <ResultsView matches={matches.filter(m=>resultsMap[m.id])} resultsMap={resultsMap} users={users} predsMap={predsMap} />
         )}
       </main>
 
@@ -529,7 +447,7 @@ export default function App() {
       {/* Modals */}
       {modal==="register" && <Modal title="Créer un compte" onClose={()=>setModal(null)}><AuthForm mode="register" onSubmit={handleRegister} onSwitch={()=>setModal("login")}/></Modal>}
       {modal==="login"    && <Modal title="Se connecter"    onClose={()=>setModal(null)}><AuthForm mode="login"    onSubmit={handleLogin}    onSwitch={()=>setModal("register")}/></Modal>}
-      {modal==="admin" && isAdmin && <Modal title="🔧 Saisie des résultats" onClose={()=>setModal(null)}><AdminPanel matches={MATCHES} resultsMap={resultsMap} onResult={handleResult}/></Modal>}
+      {modal==="admin" && isAdmin && <Modal title="🔧 Saisie des résultats" onClose={()=>setModal(null)}><AdminPanel matches={matches} resultsMap={resultsMap} onResult={handleResult}/></Modal>}
     </div>
   );
 }
@@ -622,7 +540,14 @@ function PronosticView({ matches, currentUser, predsMap, resultsMap, onPredict, 
         ))}
       </div>
 
-      {!currentUser && (
+      {matches.length===0 && (
+        <div style={{ margin:"8px 16px 12px", background:"#1E293B", borderRadius:12, padding:24, textAlign:"center" }}>
+          <div style={{ fontSize:32, marginBottom:8 }}>⏳</div>
+          <p style={{ fontSize:13, color:"#94A3B8", margin:0 }}>Chargement du calendrier des matchs depuis la FIFA…</p>
+        </div>
+      )}
+
+      {!currentUser && matches.length>0 && (
         <div style={{ margin:"8px 16px 12px", background:"#1E293B", borderRadius:12, padding:16, textAlign:"center" }}>
           <p style={{ fontSize:13, color:"#94A3B8", margin:"0 0 10px" }}>Connectez-vous pour pronostiquer</p>
           <button onClick={onLoginRequired} style={btn("#10B981","#fff")}>Se connecter</button>
