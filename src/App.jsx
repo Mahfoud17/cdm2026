@@ -505,7 +505,7 @@ export default function App() {
           <LeaderboardView leaderboard={leaderboard} currentUser={currentUser} matchesPlayed={results.length} />
         )}
         {tab === "resultats" && (
-          <ResultsView matches={MATCHES.filter(m=>resultsMap[m.id]).sort((a,b)=>(`${a.date} ${a.time}`).localeCompare(`${b.date} ${b.time}`))} resultsMap={resultsMap} users={users} predsMap={predsMap} />
+          <ResultsView matches={[...MATCHES].sort((a,b)=>(`${a.date} ${a.time}`).localeCompare(`${b.date} ${b.time}`))} resultsMap={resultsMap} users={users} predsMap={predsMap} />
         )}
       </main>
 
@@ -757,44 +757,94 @@ function LeaderboardView({ leaderboard, currentUser, matchesPlayed }) {
 // ─── RESULTS VIEW ────────────────────────────────────────────────────────────
 
 function ResultsView({ matches, resultsMap, users, predsMap }) {
-  if (matches.length===0) return (
-    <div style={{ padding:48, textAlign:"center", color:"#64748B" }}>
-      <div style={{ fontSize:40, marginBottom:12 }}>⏳</div>
-      <div style={{ fontSize:14 }}>Les résultats s'afficheront ici au fur et à mesure.</div>
-    </div>
-  );
+  const [filter, setFilter] = useState("all");
+  const stages = ["all","Groupes","32èmes","16èmes","Quarts","Demies","3e place","Finale"];
+  const labels  = { all:"Tous", Groupes:"Groupes", "32èmes":"32èmes", "16èmes":"16èmes", Quarts:"Quarts", Demies:"Demies", "3e place":"3e place", Finale:"Finale" };
+
+  const filtered = filter === "all" ? matches : matches.filter(m => m.stage === filter);
+  const done     = filtered.filter(m =>  resultsMap[m.id]);
+  const upcoming = filtered.filter(m => !resultsMap[m.id]);
+
   return (
-    <div style={{ padding:16 }}>
-      <h2 style={{ fontSize:15, fontWeight:800, marginBottom:16 }}>📊 Détail par match</h2>
-      {matches.map(m => {
-        const r = resultsMap[m.id];
-        const rows = users.map(u => ({
-          user:u, pred:predsMap[u.id]?.[m.id],
-          pts:scoreForMatch(predsMap[u.id]?.[m.id], r)
-        })).sort((a,b)=>b.pts-a.pts);
-        return (
-          <div key={m.id} style={{ background:"#1E293B", borderRadius:12, marginBottom:12, overflow:"hidden" }}>
-            <div style={{ background:"#0F172A", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontWeight:700, fontSize:13 }}>
-                {m.home} <span style={{color:"#10B981",fontWeight:900}}>{r.home_score}–{r.away_score}</span> {m.away}
-              </span>
-              <span style={{ fontSize:11, color:"#64748B" }}>{m.date}</span>
+    <div>
+      {/* Filtres par phase */}
+      <div style={{ display:"flex", gap:8, padding:"12px 16px", overflowX:"auto" }}>
+        {stages.map(s => (
+          <button key={s} onClick={()=>setFilter(s)} style={{
+            background: filter===s ? "#10B981":"#1E293B", color: filter===s?"#fff":"#94A3B8",
+            border:"none", borderRadius:20, padding:"6px 14px", fontSize:12, fontWeight:600,
+            cursor:"pointer", whiteSpace:"nowrap" }}>{labels[s]}</button>
+        ))}
+      </div>
+
+      <div style={{ padding:"0 16px 16px" }}>
+        {/* Matchs terminés */}
+        {done.length > 0 && (
+          <>
+            <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:"0.1em", margin:"12px 0 8px" }}>
+              ✅ Matchs terminés ({done.length})
             </div>
-            <div style={{ padding:"10px 14px", display:"flex", flexDirection:"column", gap:6 }}>
-              {rows.map(({user,pred,pts}) => (
-                <div key={user.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <Avatar user={user} size={24}/>
-                  <span style={{ flex:1, fontSize:12, fontWeight:600 }}>{user.username}</span>
-                  <span style={{ fontSize:12, color:"#94A3B8" }}>
-                    {pred ? `${pred.home_score}–${pred.away_score}` : <em style={{color:"#475569"}}>–</em>}
-                  </span>
-                  <Badge pts={pred?pts:0}/>
+            {done.map(m => {
+              const r = resultsMap[m.id];
+              const rows = users.map(u => ({
+                user:u, pred:predsMap[u.id]?.[m.id],
+                pts:scoreForMatch(predsMap[u.id]?.[m.id], r)
+              })).sort((a,b)=>b.pts-a.pts);
+              return (
+                <div key={m.id} style={{ background:"#1E293B", borderRadius:12, marginBottom:10, overflow:"hidden" }}>
+                  <div style={{ background:"#0F172A", padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontWeight:700, fontSize:13 }}>
+                      {m.home} <span style={{color:"#10B981",fontWeight:900}}>{r.home_score}–{r.away_score}</span> {m.away}
+                    </span>
+                    <span style={{ fontSize:11, color:"#64748B" }}>{m.date} {m.time}</span>
+                  </div>
+                  {users.length > 0 && (
+                    <div style={{ padding:"10px 14px", display:"flex", flexDirection:"column", gap:6 }}>
+                      {rows.map(({user,pred,pts}) => (
+                        <div key={user.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <Avatar user={user} size={24}/>
+                          <span style={{ flex:1, fontSize:12, fontWeight:600 }}>{user.username}</span>
+                          <span style={{ fontSize:12, color:"#94A3B8" }}>
+                            {pred ? `${pred.home_score}–${pred.away_score}` : <em style={{color:"#475569"}}>–</em>}
+                          </span>
+                          <Badge pts={pred?pts:0}/>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
+              );
+            })}
+          </>
+        )}
+
+        {/* Matchs à venir */}
+        {upcoming.length > 0 && (
+          <>
+            <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:"0.1em", margin:"16px 0 8px" }}>
+              📅 À jouer ({upcoming.length})
             </div>
-          </div>
-        );
-      })}
+            {upcoming.map(m => (
+              <div key={m.id} style={{ background:"#1E293B", borderRadius:12, marginBottom:8, padding:"12px 14px",
+                display:"flex", justifyContent:"space-between", alignItems:"center",
+                borderLeft:"3px solid #334155" }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700 }}>{m.home} <span style={{color:"#475569"}}>vs</span> {m.away}</div>
+                  <div style={{ fontSize:11, color:"#64748B", marginTop:3 }}>{m.group} · {m.stage}</div>
+                </div>
+                <div style={{ textAlign:"right", fontSize:11, color:"#64748B" }}>
+                  <div>{m.date}</div>
+                  <div style={{ fontWeight:600 }}>{m.time}</div>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {filtered.length === 0 && (
+          <div style={{ padding:48, textAlign:"center", color:"#64748B", fontSize:14 }}>Aucun match dans cette phase.</div>
+        )}
+      </div>
     </div>
   );
 }
