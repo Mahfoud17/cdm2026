@@ -147,29 +147,43 @@ const MATCHES = [
   { id:70, group:"Groupe L", home:"🇵🇦 Panama",         away:"🇬🇭 Ghana",           date:"2026-06-24", time:"19:00", stage:"Groupes" },
   { id:71, group:"Groupe L", home:"🇬🇭 Ghana",          away:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre",    date:"2026-06-30", time:"20:00", stage:"Groupes" },
   { id:72, group:"Groupe L", home:"🇵🇦 Panama",         away:"🇭🇷 Croatie",        date:"2026-06-30", time:"20:00", stage:"Groupes" },
-  // ── PHASE FINALE
-  { id:101, group:"Phase finale", home:"1er A", away:"2e B", date:"2026-07-04", time:"19:00", stage:"16èmes" },
-  { id:102, group:"Phase finale", home:"1er C", away:"2e D", date:"2026-07-04", time:"22:00", stage:"16èmes" },
-  { id:103, group:"Phase finale", home:"1er E", away:"2e F", date:"2026-07-05", time:"19:00", stage:"16èmes" },
-  { id:104, group:"Phase finale", home:"1er G", away:"2e H", date:"2026-07-05", time:"22:00", stage:"16èmes" },
-  { id:105, group:"Phase finale", home:"1er I", away:"2e J", date:"2026-07-06", time:"19:00", stage:"16èmes" },
-  { id:106, group:"Phase finale", home:"1er K", away:"2e L", date:"2026-07-06", time:"22:00", stage:"16èmes" },
-  { id:107, group:"Phase finale", home:"1er B", away:"2e A", date:"2026-07-07", time:"19:00", stage:"16èmes" },
-  { id:108, group:"Phase finale", home:"1er D", away:"2e C", date:"2026-07-07", time:"22:00", stage:"16èmes" },
-  // Meilleurs 3es
-  { id:109, group:"Phase finale", home:"3e (ABCD)", away:"3e (EFGH)", date:"2026-07-08", time:"19:00", stage:"16èmes" },
-  { id:110, group:"Phase finale", home:"3e (IJKL)", away:"3e (autres)", date:"2026-07-08", time:"22:00", stage:"16èmes" },
-  // Quarts
-  { id:121, group:"Phase finale", home:"V101", away:"V102", date:"2026-07-11", time:"19:00", stage:"Quarts" },
-  { id:122, group:"Phase finale", home:"V103", away:"V104", date:"2026-07-11", time:"22:00", stage:"Quarts" },
-  { id:123, group:"Phase finale", home:"V105", away:"V106", date:"2026-07-12", time:"19:00", stage:"Quarts" },
-  { id:124, group:"Phase finale", home:"V107", away:"V108", date:"2026-07-12", time:"22:00", stage:"Quarts" },
-  // Demies
-  { id:131, group:"Phase finale", home:"V121", away:"V122", date:"2026-07-15", time:"21:00", stage:"Demies" },
-  { id:132, group:"Phase finale", home:"V123", away:"V124", date:"2026-07-16", time:"21:00", stage:"Demies" },
-  // 3e place
+  // ── PHASE FINALE — 32es de finale (28-30 juin 2026) — 16 matchs
+  { id:81,  group:"Phase finale", home:"1er A", away:"2e B",        date:"2026-06-28", time:"18:00", stage:"32èmes" },
+  { id:82,  group:"Phase finale", home:"1er C", away:"2e D",        date:"2026-06-28", time:"21:00", stage:"32èmes" },
+  { id:83,  group:"Phase finale", home:"1er E", away:"2e F",        date:"2026-06-28", time:"00:00", stage:"32èmes" },
+  { id:84,  group:"Phase finale", home:"1er B", away:"3e (1)",      date:"2026-06-29", time:"18:00", stage:"32èmes" },
+  { id:85,  group:"Phase finale", home:"1er G", away:"3e (2)",      date:"2026-06-29", time:"21:00", stage:"32èmes" },
+  { id:86,  group:"Phase finale", home:"1er I", away:"3e (3)",      date:"2026-06-29", time:"00:00", stage:"32èmes" },
+  { id:87,  group:"Phase finale", home:"1er F", away:"2e E",        date:"2026-06-30", time:"18:00", stage:"32èmes" },
+  { id:88,  group:"Phase finale", home:"1er K", away:"3e (4)",      date:"2026-06-30", time:"21:00", stage:"32èmes" },
+  { id:89,  group:"Phase finale", home:"1er D", away:"3e (5)",      date:"2026-06-30", time:"00:00", stage:"32èmes" },
+  { id:90,  group:"Phase finale", home:"1er L", away:"2e K",        date:"2026-07-01", time:"18:00", stage:"32èmes" },
+  { id:91,  group:"Phase finale", home:"1er H", away:"3e (6)",      date:"2026-07-01", time:"21:00", stage:"32èmes" },
+  { id:92,  group:"Phase finale", home:"2e I",  away:"2e J",        date:"2026-07-01", time:"00:00", stage:"32èmes" },
+  { id:93,  group:"Phase finale", home:"1er J", away:"2e L",        date:"2026-07-02", time:"18:00", stage:"32èmes" },
+  { id:94,  group:"Phase finale", home:"2e G",  away:"2e H",        date:"2026-07-02", time:"21:00", stage:"32èmes" },
+  { id:95,  group:"Phase finale", home:"1er C... bis", away:"3e (7)",date:"2026-07-02", time:"00:00", stage:"32èmes" },
+  { id:96,  group:"Phase finale", home:"2e A",  away:"2e C",        date:"2026-07-03", time:"18:00", stage:"32èmes" },
+  // ── 16es de finale (7-11 juillet) — 8 matchs
+  { id:101, group:"Phase finale", home:"V81", away:"V82", date:"2026-07-04", time:"18:00", stage:"16èmes" },
+  { id:102, group:"Phase finale", home:"V83", away:"V84", date:"2026-07-04", time:"21:00", stage:"16èmes" },
+  { id:103, group:"Phase finale", home:"V85", away:"V86", date:"2026-07-05", time:"18:00", stage:"16èmes" },
+  { id:104, group:"Phase finale", home:"V87", away:"V88", date:"2026-07-05", time:"21:00", stage:"16èmes" },
+  { id:105, group:"Phase finale", home:"V89", away:"V90", date:"2026-07-06", time:"18:00", stage:"16èmes" },
+  { id:106, group:"Phase finale", home:"V91", away:"V92", date:"2026-07-06", time:"21:00", stage:"16èmes" },
+  { id:107, group:"Phase finale", home:"V93", away:"V94", date:"2026-07-07", time:"18:00", stage:"16èmes" },
+  { id:108, group:"Phase finale", home:"V95", away:"V96", date:"2026-07-07", time:"21:00", stage:"16èmes" },
+  // ── Quarts (9-11 juillet) — 4 matchs
+  { id:121, group:"Phase finale", home:"V101", away:"V102", date:"2026-07-09", time:"21:00", stage:"Quarts" },
+  { id:122, group:"Phase finale", home:"V103", away:"V104", date:"2026-07-10", time:"21:00", stage:"Quarts" },
+  { id:123, group:"Phase finale", home:"V105", away:"V106", date:"2026-07-11", time:"18:00", stage:"Quarts" },
+  { id:124, group:"Phase finale", home:"V107", away:"V108", date:"2026-07-11", time:"21:00", stage:"Quarts" },
+  // ── Demies (14-15 juillet) — 2 matchs
+  { id:131, group:"Phase finale", home:"V121", away:"V122", date:"2026-07-14", time:"21:00", stage:"Demies" },
+  { id:132, group:"Phase finale", home:"V123", away:"V124", date:"2026-07-15", time:"21:00", stage:"Demies" },
+  // ── 3e place (18 juillet)
   { id:140, group:"Phase finale", home:"Perdant 131", away:"Perdant 132", date:"2026-07-18", time:"21:00", stage:"3e place" },
-  // Finale
+  // ── Finale (19 juillet)
   { id:141, group:"Phase finale", home:"V131", away:"V132", date:"2026-07-19", time:"21:00", stage:"Finale" },
 ];
 
@@ -587,8 +601,8 @@ function HomeView({ currentUser, stats, onRegister, onLogin, onLogout, onGoProno
 
 function PronosticView({ matches, currentUser, predsMap, resultsMap, onPredict, onLoginRequired }) {
   const [filter, setFilter] = useState("all");
-  const stages = ["all","Groupes","16èmes","Quarts","Demies","Finale"];
-  const labels  = { all:"Tous", Groupes:"Groupes", "16èmes":"16èmes", Quarts:"Quarts", Demies:"Demies", Finale:"Finale" };
+  const stages = ["all","Groupes","32èmes","16èmes","Quarts","Demies","3e place","Finale"];
+  const labels  = { all:"Tous", Groupes:"Groupes", "32èmes":"32èmes", "16èmes":"16èmes", Quarts:"Quarts", Demies:"Demies", "3e place":"3e place", Finale:"Finale" };
   const filtered = filter==="all" ? matches : matches.filter(m=>m.stage===filter);
   const upcoming = filtered.filter(m=>!resultsMap[m.id]);
   const done     = filtered.filter(m=> resultsMap[m.id]);
@@ -642,7 +656,7 @@ function MatchCard({ match, pred, result, onPredict }) {
     setSaved(true); setTimeout(()=>setSaved(false), 1800);
   }
 
-  const stageColors = { Finale:"#F59E0B", Huitièmes:"#8B5CF6", Quarts:"#EC4899", Demies:"#F97316", Groupes:"#3B82F6" };
+  const stageColors = { Finale:"#F59E0B", "3e place":"#0EA5E9", Demies:"#F97316", Quarts:"#EC4899", "16èmes":"#8B5CF6", "32èmes":"#A855F7", Groupes:"#3B82F6" };
 
   return (
     <div style={{ margin:"8px 16px", background:"#1E293B", borderRadius:12, overflow:"hidden",
